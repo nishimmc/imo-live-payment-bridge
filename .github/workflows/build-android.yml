@@ -1,0 +1,58 @@
+name: Build Android Payment Bridge
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          # Do not install the legacy `tools` package here. We install only
+          # the SDK packages required by this project in the next step.
+          packages: ''
+          cmdline-tools-version: '14742923'
+          log-accepted-android-sdk-licenses: 'false'
+
+      - name: Install required Android SDK packages
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Verify Android SDK
+        run: |
+          java -version
+          sdkmanager --version
+          gradle --version
+
+      - name: Build debug APK
+        working-directory: android
+        run: gradle --no-daemon --stacktrace assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: imo-live-payment-bridge-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
